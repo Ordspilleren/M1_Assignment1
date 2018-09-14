@@ -1,0 +1,78 @@
+---
+title: "Assignment 1"
+author: "Lasse Bjerre"
+output: html_notebook
+---
+
+First things first, load the libraries we need for the analysis.
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+# Importing and cleaning data
+Let's start by importing the raw data into R.
+
+```{r}
+cities <- read_tsv("data/cities_df.tsv")
+people <- read_tsv("data/people_df.tsv")
+people_work <- read_tsv("data/people_work.tsv")
+trips <- read_tsv("data/trips_df.tsv")
+```
+
+## City data
+First, we'll have a look at the data we got for the cities.
+
+```{r}
+cities %>% head()
+```
+
+Let's convert the ratings to factors, thus enabling sorting of these.
+```{r}
+factor_levels <- c("bad", "okay", "good", "great")
+cities <- cities %>% mutate(`A/C or heating` = factor(`A/C or heating`, levels = factor_levels),
+                            `Adult nightlife` = factor(`Adult nightlife`, levels = factor_levels),
+                            `Air quality` = factor(`Air quality`, levels = factor_levels),
+                            `Cost of living` = factor(`Cost of living`, levels = factor_levels),
+                            `English speaking` = factor(`English speaking`, levels = factor_levels),
+                            `Female friendly` = factor(`Female friendly`, levels = factor_levels),
+                            `Free WiFi in city` = factor(`Free WiFi in city`, levels = factor_levels),
+                            `Freedom of speech` = factor(`Freedom of speech`, levels = factor_levels),
+                            `Friendly to foreigners` = factor(`Friendly to foreigners`, levels = factor_levels),
+                            Fun = factor(Fun, levels = factor_levels),
+                            Happiness = factor(Happiness, levels = factor_levels),
+                            Healthcare = factor(Healthcare, levels = factor_levels),
+                            `LGBT friendly` = factor(`LGBT friendly`, levels = factor_levels),
+                            Nightlife = factor(Nightlife, levels = factor_levels),
+                            Peace = factor(Peace, levels = factor_levels),
+                            `Places to work from` = factor(`Places to work from`, levels = factor_levels),
+                            `Quality of life` = factor(`Quality of life`, levels = factor_levels),
+                            `Racial tolerance` = factor(`Racial tolerance`, levels = factor_levels),
+                            Safety = factor(Safety, levels = factor_levels),
+                            `Startup Score` = factor(`Startup Score`, levels = factor_levels),
+                            `Traffic safety` = factor(`Traffic safety`, levels = factor_levels),
+                            Walkability = factor(Walkability, levels = factor_levels))
+```
+
+I am also going to convert the Average trip length to a numeric value so we can do some analysis with it.
+
+```{r}
+cities <- cities %>% mutate(`Avg trip length` = as.numeric(str_extract(`Avg trip length`, "[0-9]+")))
+```
+
+## People data
+
+```{r}
+people_work %>% head()
+```
+
+
+# Joining the data
+
+# Exploring the data
+
+```{r}
+english_avg_trip <- cities %>% group_by(`English speaking`) %>% filter(!is.na(`Avg trip length`), !is.na(`English speaking`)) %>% summarise(mean = mean(`Avg trip length`))
+ggplot(english_avg_trip, aes(x = `English speaking`, y = mean)) + geom_bar(stat = "identity")
+```
+
