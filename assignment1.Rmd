@@ -78,17 +78,22 @@ I am also going to convert the Average trip length to a numeric value by first r
 cities <- cities %>% mutate(avg.trip.length = as.numeric(str_extract(avg.trip.length, "[0-9]+")))
 ```
 
-Let's also convert the population to a numeric value, more specifically a double like the above. The regular expression below takes everything that isn't a numeric value and replaces it with nothing.
+Let's also convert the population and internet speed to a numeric value, more specifically a double like the above. The regular expression below takes everything that isn't a numeric value and replaces it with nothing.
 
 ```{r}
-cities <- cities %>% mutate(population = as.numeric(gsub("[^0-9+]", "", population)))
+cities <- cities %>% mutate(population = as.numeric(gsub("[^0-9+]", "", population)),
+                            internet.speed = as.numeric(gsub("[^0-9+]", "", internet.speed)))
 head(cities$population)
 ```
 
-Let's use the same trick for other numeric values that we want to use later.
+Let's use the same trick for other numeric values that we want to use later. Here, I use a regular expression to get the first number after the dollar-sign, and then remove the dollar-sign afterwards. 
 
 ```{r}
-
+cities <- cities %>% mutate(beer = as.numeric(gsub("\\$", "", str_extract(beer, "\\$[0-9,.]+"))),
+                            airbnb = as.numeric(gsub("\\$", "", str_extract(airbnb, "\\$[0-9,.]+"))),
+                            coffee = as.numeric(gsub("\\$", "", str_extract(coffee, "\\$[0-9,.]+"))),
+                            hotel = as.numeric(gsub("\\$", "", str_extract(hotel, "\\$[0-9,.]+"))))
+head(cities)
 ```
 
 
@@ -131,6 +136,21 @@ ggplot(fun_avg_trip, aes(x = adult.nightlife, y = mean)) + geom_bar(stat = "iden
 ```
 
 It seems that is indeed the case!
+
+## Think of the environment!
+
+I wonder how the air quality differs across regions. To do this, I first group the data by air quality and region, and then use the `tally()` function to count the number of occurances of quality for each region. Lastly, I add the column `scale`, which is the scaled count to more correctly represent the data. I do this since there are many more cities in some regions than others.
+
+I then generate a plot of the results, using `position = "dodge"` to have the bars grouped together instead of overlapping.
+
+```{r}
+region.air.quality <- cities %>% group_by(air.quality, region) %>% drop_na() %>% tally() %>% mutate(scale = scale(n, center = FALSE))
+ggplot(region.air.quality, aes(fill = region, x = air.quality, y = scale)) + geom_bar(position = "dodge", stat = "identity")
+```
+
+As expected, the air quality in the asian countries is generally worse. The air quality in Europe is very good overall, with the Americas coming in second.
+
+## Clustering
 
 ```{r}
 library(factoextra)
