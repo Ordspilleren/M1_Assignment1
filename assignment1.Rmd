@@ -78,6 +78,20 @@ I am also going to convert the Average trip length to a numeric value by first r
 cities <- cities %>% mutate(avg.trip.length = as.numeric(str_extract(avg.trip.length, "[0-9]+")))
 ```
 
+Let's also convert the population to a numeric value, more specifically a double like the above. The regular expression below takes everything that isn't a numeric value and replaces it with nothing.
+
+```{r}
+cities <- cities %>% mutate(population = as.numeric(gsub("[^0-9+]", "", population)))
+head(cities$population)
+```
+
+Let's use the same trick for other numeric values that we want to use later.
+
+```{r}
+
+```
+
+
 ## Trip data
 
 First up, let's have a look at the trip data.
@@ -107,10 +121,24 @@ people_work %>% head()
 
 ## Trip lengths
 
+The city data has lots of useful information, among this the average trip length. In my data cleanup, I converted this to a numeric value to enable analysis such as the following. 
 
+Everyone loves a drink or two, but is that also reflected in the average trip length to the different cities? Let's find out by grouping the data by the nightlife factor and getting the mean of the average trip lengths.
 
 ```{r}
-english_avg_trip <- cities %>% group_by(english.speaking) %>% filter(!is.na(avg.trip.length), !is.na(english.speaking)) %>% summarise(mean = mean(avg.trip.length))
-ggplot(english_avg_trip, aes(x = english.speaking, y = mean)) + geom_bar(stat = "identity")
+fun_avg_trip <- cities %>% group_by(adult.nightlife) %>% filter(!is.na(avg.trip.length), !is.na(adult.nightlife)) %>% summarise(mean = mean(avg.trip.length))
+ggplot(fun_avg_trip, aes(x = adult.nightlife, y = mean)) + geom_bar(stat = "identity")
 ```
 
+It seems that is indeed the case!
+
+```{r}
+library(factoextra)
+cities.clustering <- cities %>% mutate(walkability = as.numeric(walkability), quality.of.life = as.numeric(quality.of.life)) %>% drop_na()
+km.cities <- kmeans(cities.clustering %>% select(walkability, quality.of.life, population) %>% scale(), centers = 3)
+km.cities
+fviz_cluster(km.cities, data = cities.clustering %>% select(walkability, quality.of.life, population) %>% scale())
+```
+
+
+## Internet speed and programmers
