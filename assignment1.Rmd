@@ -14,10 +14,12 @@ library(lubridate)
 Let's start by importing the raw data into R.
 
 ```{r}
-cities <- read_tsv("data/cities_df.tsv")
-people <- read_tsv("data/people_df.tsv")
-people_work <- read_tsv("data/people_work.tsv")
-trips <- read_tsv("data/trips_df.tsv")
+#cities <- read_csv("data/cities_df.csv")
+#trips <- read_csv("data/trips_df.csv")
+#people <- read_tsv("data/people_df.tsv")
+#people_work <- read_tsv("data/people_work.tsv")
+cities <- fread("data/cities_df.csv", header = TRUE, check.names = TRUE, data.table = FALSE)
+trips <- fread("data/trips_df.csv", header = TRUE, check.names = TRUE, data.table = FALSE)
 ```
 
 ## City data
@@ -27,38 +29,73 @@ First, we'll have a look at the data we got for the cities.
 cities %>% head()
 ```
 
-Let's convert the ratings to factors, thus enabling sorting of these.
+The column names are capitalized. Let's convert them to all lowercase to make it easier to work with. 
+
+```{r}
+colnames(cities) <- tolower(colnames(cities))
+cities <- cities[,!duplicated(colnames(cities))]
+```
+
+That's better. By doing `duplicated(cities$place_slug)`, we see that there's no duplicates of any of the cities, so removing duplicates is unnecessary.
+The  `read_tsv` function created a new column with some rownames for us, in this case the X1 column with values ranging from 1-731. It would however make more sense to make the place_slug our rowname, since that indicates which city each row is representing. Let's do that.
+
+```{r}
+rownames(cities) <- cities[,"place_slug"]
+```
+
+
+Let's convert the ratings to factors, thus enabling sorting of these. I am manually setting the factor levels such that it is correcly sorted from bad to great.
+
 ```{r}
 factor_levels <- c("bad", "okay", "good", "great")
-cities <- cities %>% mutate(`A/C or heating` = factor(`A/C or heating`, levels = factor_levels),
-                            `Adult nightlife` = factor(`Adult nightlife`, levels = factor_levels),
-                            `Air quality` = factor(`Air quality`, levels = factor_levels),
-                            `Cost of living` = factor(`Cost of living`, levels = factor_levels),
-                            `English speaking` = factor(`English speaking`, levels = factor_levels),
-                            `Female friendly` = factor(`Female friendly`, levels = factor_levels),
-                            `Free WiFi in city` = factor(`Free WiFi in city`, levels = factor_levels),
-                            `Freedom of speech` = factor(`Freedom of speech`, levels = factor_levels),
-                            `Friendly to foreigners` = factor(`Friendly to foreigners`, levels = factor_levels),
-                            Fun = factor(Fun, levels = factor_levels),
-                            Happiness = factor(Happiness, levels = factor_levels),
-                            Healthcare = factor(Healthcare, levels = factor_levels),
-                            `LGBT friendly` = factor(`LGBT friendly`, levels = factor_levels),
-                            Nightlife = factor(Nightlife, levels = factor_levels),
-                            Peace = factor(Peace, levels = factor_levels),
-                            `Places to work from` = factor(`Places to work from`, levels = factor_levels),
-                            `Quality of life` = factor(`Quality of life`, levels = factor_levels),
-                            `Racial tolerance` = factor(`Racial tolerance`, levels = factor_levels),
-                            Safety = factor(Safety, levels = factor_levels),
-                            `Startup Score` = factor(`Startup Score`, levels = factor_levels),
-                            `Traffic safety` = factor(`Traffic safety`, levels = factor_levels),
-                            Walkability = factor(Walkability, levels = factor_levels))
+cities <- cities %>% mutate(a.c.or.heating = factor(a.c.or.heating, levels = factor_levels),
+                            adult.nightlife = factor(adult.nightlife, levels = factor_levels),
+                            air.quality = factor(air.quality, levels = factor_levels),
+                            cost.of.living = factor(cost.of.living, levels = factor_levels),
+                            english.speaking = factor(english.speaking, levels = factor_levels),
+                            female.friendly = factor(female.friendly, levels = factor_levels),
+                            free.wifi.in.city = factor(free.wifi.in.city, levels = factor_levels),
+                            freedom.of.speech = factor(freedom.of.speech, levels = factor_levels),
+                            friendly.to.foreigners = factor(friendly.to.foreigners, levels = factor_levels),
+                            fun = factor(fun, levels = factor_levels),
+                            happiness = factor(happiness, levels = factor_levels),
+                            healthcare = factor(healthcare, levels = factor_levels),
+                            lgbt.friendly = factor(lgbt.friendly, levels = factor_levels),
+                            nightlife = factor(nightlife, levels = factor_levels),
+                            peace = factor(peace, levels = factor_levels),
+                            places.to.work.from = factor(places.to.work.from, levels = factor_levels),
+                            quality.of.life = factor(quality.of.life, levels = factor_levels),
+                            racial.tolerance = factor(racial.tolerance, levels = factor_levels),
+                            safety = factor(safety, levels = factor_levels),
+                            startup.score = factor(startup.score, levels = factor_levels),
+                            traffic.safety = factor(traffic.safety, levels = factor_levels),
+                            walkability = factor(walkability, levels = factor_levels))
 ```
 
-I am also going to convert the Average trip length to a numeric value so we can do some analysis with it.
+I am also going to convert the Average trip length to a numeric value by first removing the "days" part from the variable using a regular expression, and then converting the resulting string to a numeric value. This enables us to do some analysis with it.
 
 ```{r}
-cities <- cities %>% mutate(`Avg trip length` = as.numeric(str_extract(`Avg trip length`, "[0-9]+")))
+cities <- cities %>% mutate(avg.trip.length = as.numeric(str_extract(avg.trip.length, "[0-9]+")))
 ```
+
+## Trip data
+
+First up, let's have a look at the trip data.
+
+```{r}
+trips %>% head()
+```
+
+As we can see, the trip data has the same place_slug and country_slug column as the cities data. This makes for a great key when we are joining our data. Great!
+
+Since the date_end and date_start columns contain dates, let's convert them to a date datatype.
+
+```{r}
+trips <- trips %>% drop_na(date_end, date_start) %>% mutate(date_end = ymd(date_end), date_start = ymd(date_start))
+trips <- trips %>% drop_na(date_end, date_start)
+```
+
+After the conversion, I drop all NA's from the two columns. This is because some of the dates failed to parse.
 
 ## People data
 
@@ -66,13 +103,14 @@ cities <- cities %>% mutate(`Avg trip length` = as.numeric(str_extract(`Avg trip
 people_work %>% head()
 ```
 
+# Joining and Exploring the data
 
-# Joining the data
+## Trip lengths
 
-# Exploring the data
+
 
 ```{r}
-english_avg_trip <- cities %>% group_by(`English speaking`) %>% filter(!is.na(`Avg trip length`), !is.na(`English speaking`)) %>% summarise(mean = mean(`Avg trip length`))
-ggplot(english_avg_trip, aes(x = `English speaking`, y = mean)) + geom_bar(stat = "identity")
+english_avg_trip <- cities %>% group_by(english.speaking) %>% filter(!is.na(avg.trip.length), !is.na(english.speaking)) %>% summarise(mean = mean(avg.trip.length))
+ggplot(english_avg_trip, aes(x = english.speaking, y = mean)) + geom_bar(stat = "identity")
 ```
 
