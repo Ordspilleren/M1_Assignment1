@@ -150,15 +150,22 @@ ggplot(region.air.quality, aes(fill = region, x = air.quality, y = scale)) + geo
 
 As expected, the air quality in the asian countries is generally worse. The air quality in Europe is very good overall, with the Americas coming in second.
 
-## Clustering
+## Adult nightlife, happiness, fun and beer prices!
+
+```{r}
+cities.clustering <- cities %>% select(adult.nightlife, happiness, fun, beer, place_slug, country)
+cities.clustering <- cities.clustering %>% mutate(adult.nightlife = as.numeric(adult.nightlife),
+                                                  happiness = as.numeric(happiness),
+                                                  fun = as.numeric(fun))
+cities.clustering <- cities.clustering %>% drop_na()
+cities.clustering <- cities.clustering %>% distinct(country, .keep_all = TRUE)
+```
 
 ```{r}
 library(factoextra)
-cities.clustering <- cities %>% mutate(walkability = as.numeric(walkability), quality.of.life = as.numeric(quality.of.life)) %>% drop_na()
-km.cities <- kmeans(cities.clustering %>% select(walkability, quality.of.life, population) %>% scale(), centers = 3)
-km.cities
-fviz_cluster(km.cities, data = cities.clustering %>% select(walkability, quality.of.life, population) %>% scale())
+rownames(cities.clustering) <- cities.clustering %>% pull(country)
+km.cities.clustering <- kmeans(cities.clustering %>% select(-place_slug, -country) %>% scale(), centers = 3)
+fviz_cluster(km.cities.clustering, data = cities.clustering %>% select(-place_slug, -country) %>% scale())
 ```
-
 
 ## Internet speed and programmers
