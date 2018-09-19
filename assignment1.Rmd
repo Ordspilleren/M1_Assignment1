@@ -214,3 +214,20 @@ Alright, seems like that was indeed the case. However, there were also countries
 Please not that the above could have been also accomplished without using join, by simply including the region when we created the clustering. However, this nicely demonstrates what joins can do.
 
 ## Internet speed and programmers
+
+```{r}
+trips.work <- trips %>% left_join(people %>% select(work, like, username), by = "username")
+trips.work.developers <- trips.work %>% filter(grepl("Web Dev", work) | grepl("Software Dev", work))
+```
+
+```{r}
+cities.developers <- trips.work.developers %>% left_join(cities %>% select(place, region, internet.speed), by = "place")
+cities.developers <- cities.developers %>% group_by(place, region, internet.speed) %>% drop_na() %>% summarise(count = n())
+#cities.developers["scale"] <- scale(cities.developers$count, center = FALSE)
+cities.developers <- cities.developers %>% arrange(desc(count))
+```
+
+```{r}
+ggplot(cities.developers, aes(x = internet.speed, y = count, fill = region)) + geom_bar(stat = "identity") + scale_x_log10()
+```
+
