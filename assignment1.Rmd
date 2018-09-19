@@ -222,12 +222,16 @@ trips.work.developers <- trips.work %>% filter(grepl("Web Dev", work) | grepl("S
 
 ```{r}
 cities.developers <- trips.work.developers %>% left_join(cities %>% select(place, region, internet.speed), by = "place")
-cities.developers <- cities.developers %>% group_by(place, region, internet.speed) %>% drop_na() %>% summarise(count = n())
+cities.developers.trips <- cities.developers %>% group_by(place, region, internet.speed) %>% drop_na() %>% summarise(count = n())
 #cities.developers["scale"] <- scale(cities.developers$count, center = FALSE)
-cities.developers <- cities.developers %>% arrange(desc(count))
 ```
 
 ```{r}
-ggplot(cities.developers, aes(x = internet.speed, y = count, fill = region)) + geom_bar(stat = "identity") + scale_x_log10()
+ggplot(cities.developers.trips, aes(x = internet.speed, y = count, fill = region)) + geom_bar(stat = "identity") + scale_x_log10()
+```
+
+```{r}
+cities.developers.trips <- cities.developers %>% group_by(region) %>% drop_na() %>% summarise(internet.speed.mean = mean(internet.speed), count = n())
+ggplot(cities.developers.trips, aes(x = region, y = internet.speed.mean, fill = count)) + geom_bar(stat = "identity")
 ```
 
