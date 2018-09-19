@@ -1,6 +1,5 @@
 ---
 title: "Assignment 1"
-author: "Lasse Bjerre"
 output: html_notebook
 ---
 
@@ -8,6 +7,7 @@ First things first, load the libraries we need for the analysis.
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(factoextra)
 ```
 
 # Importing and cleaning data
@@ -152,6 +152,10 @@ As expected, the air quality in the asian countries is generally worse. The air 
 
 ## Adult nightlife, happiness, fun and beer prices!
 
+I wonder if there's any patterns between the adult nightlife, happiness, fun and beer prices in different countries. One would think so!
+
+First off, I select only the data I am interested in exploring, and then convert the factors to numeric values so they are workable. I also remove any NA's and duplicate rows.
+
 ```{r}
 cities.clustering <- cities %>% select(adult.nightlife, happiness, fun, beer, place_slug, country)
 cities.clustering <- cities.clustering %>% mutate(adult.nightlife = as.numeric(adult.nightlife),
@@ -161,11 +165,52 @@ cities.clustering <- cities.clustering %>% drop_na()
 cities.clustering <- cities.clustering %>% distinct(country, .keep_all = TRUE)
 ```
 
+Using the so called Elbow method, we'll try to determine the optimal number of clusters for our clustering.
+
 ```{r}
-library(factoextra)
+fviz_nbclust(scale(cities.clustering %>% select(-place_slug, -country)), kmeans, method = "wss")
+```
+
+Since the peak starts at 4-6, I will make a desicion and go with 6 as my k.
+
+Next, I set the rownames since fviz uses those for visualization. I then create a K-Means cluster, making sure to scale it to account for different observation counts in the data (for comparabilitys sake).
+
+```{r}
 rownames(cities.clustering) <- cities.clustering %>% pull(country)
-km.cities.clustering <- kmeans(cities.clustering %>% select(-place_slug, -country) %>% scale(), centers = 3)
+km.cities.clustering <- kmeans(cities.clustering %>% select(-place_slug, -country) %>% scale(), centers = 6)
 fviz_cluster(km.cities.clustering, data = cities.clustering %>% select(-place_slug, -country) %>% scale())
 ```
+
+This doesn't tell us much, but we can see that the results are very clustered, so no real spread. We also see that there's a clear outlier in South Korea, where beer is very expensive. Let's take a closer look at the data.
+
+```{r}
+cities.clustering %>% bind_cols(cluster = km.cities.clustering$cluster) %>% select(-place_slug, -country) %>% group_by(cluster) %>% mutate(n = n()) %>% summarise_all(funs(mean))
+```
+
+Interestingly, the 2nd cluster has the second highest beer prices, but also scores relatively high in all other parameters. Maybe expensive beer is better after all?
+
+By joining our clustered dataframe with the trips data, we can see how many people visited the countries in the different clusters. First up, we left join the trips with the cities data, meaning that we take everything in the trips data where `place_slug` matches the `place_slug` in the clustered cities data.
+
+```{r}
+cities.clustering <- cities.clustering %>% bind_cols(cluster = km.cities.clustering$cluster)
+trips.clustering <- trips %>% left_join(cities.clustering %>% select(place_slug, cluster), by = "place_slug")
+```
+
+Let's group the trips by cluster, and count the number of rows.
+
+```{r}
+trips.clustering %>% group_by(cluster) %>% count()
+```
+
+Alright, a lot of people visited the second cluster. My assumption is that the second cluster consists of primarely European countries. Let's check if that is correct.
+
+```{r}
+cities.clustering.region <- cities %>% left_join(cities.clustering %>% select(place_slug, cluster), by = "place_slug")
+cities.clustering.region %>% group_by(cluster, region) %>% summarise(count = n())
+```
+
+Alright, seems like that was indeed the case. However, there were also countries from Latin America and the Middle East. Interesting.
+
+Please not that the above could have been also accomplished without using join, by simply including the region when we created the clustering. However, this nicely demonstrates what joins can do.
 
 ## Internet speed and programmers
