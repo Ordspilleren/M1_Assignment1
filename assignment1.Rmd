@@ -44,7 +44,7 @@ rownames(cities) <- cities[,"place_slug"]
 ```
 
 
-Let's convert the ratings to factors, thus enabling sorting of these. I am manually setting the factor levels such that it is correcly sorted from bad to great.
+Let's convert the ratings to factors, thus enabling sorting of these. I am manually setting the factor levels such that it is correctly sorted from bad to great.
 
 ```{r}
 factor_levels <- c("bad", "okay", "good", "great")
@@ -139,7 +139,7 @@ It seems that is indeed the case!
 
 ## Think of the environment!
 
-I wonder how the air quality differs across regions. To do this, I first group the data by air quality and region, and then use the `tally()` function to count the number of occurances of quality for each region. Lastly, I add the column `scale`, which is the scaled count to more correctly represent the data. I do this since there are many more cities in some regions than others.
+I wonder how the air quality differs across regions. To do this, I first group the data by air quality and region, and then use the `tally()` function to count the number of occurrences of quality for each region. Lastly, I add the column `scale`, which is the scaled count to more correctly represent the data. I do this since there are many more cities in some regions than others.
 
 I then generate a plot of the results, using `position = "dodge"` to have the bars grouped together instead of overlapping.
 
@@ -148,7 +148,7 @@ region.air.quality <- cities %>% group_by(air.quality, region) %>% drop_na() %>%
 ggplot(region.air.quality, aes(fill = region, x = air.quality, y = scale)) + geom_bar(position = "dodge", stat = "identity")
 ```
 
-As expected, the air quality in the asian countries is generally worse. The air quality in Europe is very good overall, with the Americas coming in second.
+As expected, the air quality in the Asian countries is generally worse. The air quality in Europe is very good overall, with the Americas coming in second.
 
 ## Adult nightlife, happiness, fun and beer prices!
 
@@ -171,9 +171,9 @@ Using the so called Elbow method, we'll try to determine the optimal number of c
 fviz_nbclust(scale(cities.clustering %>% select(-place_slug, -country)), kmeans, method = "wss")
 ```
 
-Since the peak starts at 4-6, I will make a desicion and go with 6 as my k.
+Since the peak starts at 4-6, I will make a decision and go with 6 as my k.
 
-Next, I set the rownames since fviz uses those for visualization. I then create a K-Means cluster, making sure to scale it to account for different observation counts in the data (for comparabilitys sake).
+Next, I set the rownames since fviz uses those for visualization. I then create a K-Means cluster, making sure to scale it to account for different observation counts in the data (for comparability's sake).
 
 ```{r}
 rownames(cities.clustering) <- cities.clustering %>% pull(country)
@@ -202,7 +202,7 @@ Let's group the trips by cluster, and count the number of rows.
 trips.clustering %>% group_by(cluster) %>% count()
 ```
 
-Alright, a lot of people visited the second cluster. My assumption is that the second cluster consists of primarely European countries. Let's check if that is correct.
+Alright, a lot of people visited the second cluster. My assumption is that the second cluster consists of primarily European countries. Let's check if that is correct.
 
 ```{r}
 cities.clustering.region <- cities %>% left_join(cities.clustering %>% select(place_slug, cluster), by = "place_slug")
@@ -215,10 +215,17 @@ Please not that the above could have been also accomplished without using join, 
 
 ## Internet speed and programmers
 
+Let's make use of the people data! Programmers need internet to work, I wonder if there's a correlation between the internet speed and the places they visit the most. Let's find out!
+
+In this case, I join the trips data with the people data, using the username as the key. I then filter the data, including only people with "Web Dev" and/or "Software Dev" as their profession.
+
 ```{r}
 trips.work <- trips %>% left_join(people %>% select(work, like, username), by = "username")
 trips.work.developers <- trips.work %>% filter(grepl("Web Dev", work) | grepl("Software Dev", work))
 ```
+
+Now we have all the trips of people who are presumably programmers. Let's join that data with the cities data to get more information about the places they visited. Here, I join using the places column as my key, since the place_slug for some reason has some cities marked with only their respective country.
+Lastly I summarize the data, counting the amount of trips to each location.
 
 ```{r}
 cities.developers <- trips.work.developers %>% left_join(cities %>% select(place, region, internet.speed), by = "place")
@@ -226,12 +233,81 @@ cities.developers.trips <- cities.developers %>% group_by(place, region, interne
 #cities.developers["scale"] <- scale(cities.developers$count, center = FALSE)
 ```
 
+Let's plot the data to see whats going on!
+
 ```{r}
 ggplot(cities.developers.trips, aes(x = internet.speed, y = count, fill = region)) + geom_bar(stat = "identity") + scale_x_log10()
 ```
 
+Hmm, looks like they don't necessarily prefer high speeds. Maybe they are going on vacation to get away from work, makes sense to me. Let's see if we can plot it in a different way, this time by region instead. Here I calculate the mean of the internet speed of the different regions, and use the color of the bars to indicate the amount of trips to each region. I also sort the plot by number of trips.
+
 ```{r}
 cities.developers.trips <- cities.developers %>% group_by(region) %>% drop_na() %>% summarise(internet.speed.mean = mean(internet.speed), count = n())
-ggplot(cities.developers.trips, aes(x = region, y = internet.speed.mean, fill = count)) + geom_bar(stat = "identity")
+ggplot(cities.developers.trips, aes(x = reorder(region, count), y = internet.speed.mean, fill = count)) + geom_bar(stat = "identity")
 ```
 
+A large number of the trips are to regions where the internet is good, but then again these regions are also some of the biggest, so that makes sense.
+
+## Programmers and their precious coffee!
+
+Programmers like coffee, but do they organize their trips to get the cheapest of it? Let's do like before and join the trip data with the city data, this time also selecting the coffee price data.
+
+```{r}
+cities.developers <- trips.work.developers %>% left_join(cities %>% select(place, region, coffee), by = "place")
+cities.developers.trips <- cities.developers %>% group_by(place, region, coffee) %>% drop_na() %>% summarise(count = n())
+cities.developers.trips
+```
+
+Looks good. However, we clearly need to filter out some results, since there are outliers in the data (like a $150 cup of coffee). We do this by only selecting the coffee prices under $50. I also round the prices to limit the amount of data in the plot.
+
+```{r}
+cities.developers.trips <- cities.developers.trips %>% filter(coffee < 50)
+ggplot(cities.developers.trips, aes(x = round(coffee), y = count, fill = region)) + geom_bar(stat = "identity")
+```
+
+It seems like the sweet spot is 2 to 3 dollars for a cup of coffee! Of cause, it might also just be a coincidence. Since there is no big outlier, I will assume that programmers don't specifically go after cheap coffee when they travel.
+
+## Trips by date
+
+Let's have a look at the dates of the trips. It would be interesting to see when people start their trips. I am going to specifically look at trips last year, just for demonstration.
+
+```{r}
+trips_bydate <- trips %>% filter(date_start >= ymd(20170101) & date_start <= ymd(20180101)) %>% group_by(date_start = date(date_start)) %>% summarise(count = n())
+trips_bydate
+```
+
+Let's plot the results!
+
+```{r}
+ggplot(trips_bydate, aes(x = date_start, y = count)) + geom_line()
+```
+
+The amount of trips are pretty consistent it seems. Let's try taking the average trips of each month and plotting them.
+
+```{r}
+trips_bydate <- trips_bydate %>% group_by(month = month(date_start)) %>% mutate(mean = mean(count))
+trips_bydate
+ggplot(trips_bydate, aes(x = month, y = mean)) + geom_line()
+```
+
+There's definitely a peak in the total trips in the start and end of the summer months.
+
+We can also try plotting trips by region, seeing if there are any standouts. Here I join with the city data again to get the region.
+
+```{r}
+trips_bydate <- trips %>% left_join(cities %>% select(place, region), by = "place") %>% drop_na()
+trips_bydate <- trips_bydate %>% filter(date_start >= ymd(20170101) & date_start <= ymd(20180101)) %>% group_by(date_start = date(date_start), region) %>% summarise(count = n())
+trips_bydate
+ggplot(trips_bydate, aes(x = date_start, y = count, color = region)) + geom_line()
+```
+
+A bit cluttered, but Europe is the most popular destination it seems. Some large peaks for Asia and North America too.
+
+How does this look in the summer months?
+
+```{r}
+trips_bydate <- trips_bydate %>% filter(date_start >= ymd(20170601) & date_start < ymd(20170801))
+ggplot(trips_bydate, aes(x = date_start, y = count, color = region)) + geom_line()
+```
+
+Pretty steady trip rate, but the middle of the months are peaks for starting trips. Interesting.
