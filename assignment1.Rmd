@@ -3,7 +3,7 @@ title: "Assignment 1"
 output: html_notebook
 ---
 
-First things first, load the libraries we need for the analysis.
+First things first, load the libraries we need for the analysis. `Tidyverse` for dplyr and others, `lubridate` for date manipulation and `factoextra` for cluster visualization
 ```{r}
 library(tidyverse)
 library(lubridate)
@@ -11,15 +11,12 @@ library(factoextra)
 ```
 
 # Importing and cleaning data
-Let's start by importing the raw data into R.
+Let's start by importing the raw data into R. I am also going to import the people data for use later on.
 
 ```{r}
-#cities <- read_csv("data/cities_df.csv")
-#trips <- read_csv("data/trips_df.csv")
-#people <- read_tsv("data/people_df.tsv")
-#people_work <- read_tsv("data/people_work.tsv")
 cities <- fread("data/cities_df.csv", header = TRUE, check.names = TRUE, data.table = FALSE)
 trips <- fread("data/trips_df.csv", header = TRUE, check.names = TRUE, data.table = FALSE)
+people <- read_tsv("data/people_df.tsv")
 ```
 
 ## City data
@@ -114,13 +111,15 @@ trips <- trips %>% drop_na(date_end, date_start) %>% mutate(date_end = ymd(date_
 trips <- trips %>% drop_na(date_end, date_start)
 ```
 
-After the conversion, I drop all NA's from the two columns. This is because some of the dates failed to parse.
+After the conversion, I drop all NA's from the two columns. I do this because some of the dates failed to parse, and removing NA's removes these.
 
 ## People data
 
 ```{r}
-people_work %>% head()
+people %>% head()
 ```
+
+Not much to do here, looks good! I could convert the `work` and `like` columns to vectors, but I choose not to do that since I use a different approach for getting these later on.
 
 # Joining and Exploring the data
 
@@ -135,11 +134,11 @@ fun_avg_trip <- cities %>% group_by(adult.nightlife) %>% filter(!is.na(avg.trip.
 ggplot(fun_avg_trip, aes(x = adult.nightlife, y = mean)) + geom_bar(stat = "identity")
 ```
 
-It seems that is indeed the case!
+It seems that is indeed the case! The average trip length is longer where the nightlife is great.
 
 ## Think of the environment!
 
-I wonder how the air quality differs across regions. To do this, I first group the data by air quality and region, and then use the `tally()` function to count the number of occurrences of quality for each region. Lastly, I add the column `scale`, which is the scaled count to more correctly represent the data. I do this since there are many more cities in some regions than others.
+I wonder how the air quality differs across regions. To do this, I first group the data by air quality and region, and then use the `tally()` function to count the number of occurrences of air quality for each region. Lastly, I add the column `scale`, which is the scaled count to more correctly represent the data. I do this since there are many more cities in some regions than others.
 
 I then generate a plot of the results, using `position = "dodge"` to have the bars grouped together instead of overlapping.
 
